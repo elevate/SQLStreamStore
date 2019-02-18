@@ -48,7 +48,7 @@
             MessageId = messageId;
             Type = type;
             JsonData = jsonData;
-            JsonMetadata = jsonMetadata ?? string.Empty;
+            JsonMetadata = jsonMetadata;
         }
     }
 }

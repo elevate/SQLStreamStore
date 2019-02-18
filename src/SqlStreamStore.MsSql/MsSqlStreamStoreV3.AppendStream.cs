@@ -484,7 +484,7 @@
                 record.SetDateTime(2, dateTime);
                 record.SetString(3, message.Type);
                 record.SetString(4, message.JsonData);
-                record.SetString(5, message.JsonMetadata);
+                record.SetString(5, message.JsonMetadata ?? string.Empty);
                 return record;
             }).ToArray();
             return sqlDataRecords;
