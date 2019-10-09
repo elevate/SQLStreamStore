@@ -1,6 +1,7 @@
 namespace SqlStreamStore
 {
     using System.Collections.Generic;
+    using System.Data;
     using System.Threading;
     using System.Threading.Tasks;
     using Npgsql;
@@ -45,7 +46,7 @@ namespace SqlStreamStore
             Pattern pattern,
             int maxCount,
             int? afterIdInternal,
-            NpgsqlTransaction transaction)
+            IDbTransaction transaction)
         {
             switch(pattern)
             {

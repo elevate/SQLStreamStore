@@ -1,5 +1,6 @@
 ﻿namespace SqlStreamStore
 {
+    using System.Data;
     using System.Threading;
     using System.Threading.Tasks;
     using Npgsql;
@@ -24,7 +25,7 @@
 
         private async Task<StreamMetadataResult> GetStreamMetadataInternal(
             StreamIdInfo streamIdInfo,
-            NpgsqlTransaction transaction,
+            IDbTransaction transaction,
             CancellationToken cancellationToken)
         {
             var page = await ReadStreamInternal(

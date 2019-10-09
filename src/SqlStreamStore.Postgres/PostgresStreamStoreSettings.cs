@@ -1,6 +1,7 @@
 ﻿namespace SqlStreamStore
 {
     using System;
+    using System.Data;
     using Npgsql;
     using SqlStreamStore.Imports.Ensure.That;
     using SqlStreamStore.Infrastructure;
@@ -10,7 +11,8 @@
     {
         private string _schema = "public";
         private Func<string, NpgsqlConnection> _connectionFactory;
-        private Func<NpgsqlConnection, NpgsqlTransaction> _transactionFactory;
+        private Func<NpgsqlConnection, IDbTransaction> _transactionFactory;
+        private Func<IDbTransaction, NpgsqlTransaction> _transactionConverter;
         private GetUtcNow _getUtcNow = SystemClock.GetUtcNow;
 
         /// <summary>
@@ -91,7 +93,11 @@
             }
         }
 
-        public Func<NpgsqlConnection, NpgsqlTransaction> TransactionFactory
+        /// <summary>
+        ///     Allows overriding the way a <see cref="NpgsqlTransaction"/> is created given a <see cref="NpgsqlConnection"/>.
+        ///     The default implementation calls <see cref="NpgsqlConnection.BeginTransaction()"/>.
+        /// </summary>
+        public Func<NpgsqlConnection, IDbTransaction> TransactionFactory
         {
             get => _transactionFactory
                    ?? (_transactionFactory = connection => connection.BeginTransaction());
@@ -99,6 +105,22 @@
             {
                 Ensure.That(value, nameof(value)).IsNotNull();
                 _transactionFactory = value;
+            }
+        }
+
+        /// <summary>
+        ///     Allows a way of retrieving an <see cref="NpgsqlTransaction"/> from an <see cref="IDbTransaction"/> when
+        ///     overriden in <see cref="TransactionFactory"/>.
+        ///     The default implementation casts to <see cref="NpgsqlTransaction"/>.
+        /// </summary>
+        public Func<IDbTransaction, NpgsqlTransaction> TransactionConverter
+        {
+            get => _transactionConverter
+                   ?? (_transactionConverter = transaction => transaction as NpgsqlTransaction);
+            set
+            {
+                Ensure.That(value, nameof(value)).IsNotNull();
+                _transactionConverter = value;
             }
         }
 

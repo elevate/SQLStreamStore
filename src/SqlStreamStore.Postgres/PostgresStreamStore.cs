@@ -18,7 +18,8 @@
     {
         private readonly PostgresStreamStoreSettings _settings;
         private readonly Func<NpgsqlConnection> _createConnection;
-        private readonly Func<NpgsqlConnection, NpgsqlTransaction> _createTransaction;
+        private readonly Func<NpgsqlConnection, IDbTransaction> _createTransaction;
+        private readonly Func<IDbTransaction, NpgsqlTransaction> _transactionConverter;
         private readonly Schema _schema;
         private readonly Lazy<IStreamStoreNotifier> _streamStoreNotifier;
 
@@ -34,6 +35,7 @@
             _settings = settings;
             _createConnection = () => _settings.ConnectionFactory(_settings.ConnectionString);
             _createTransaction = _settings.TransactionFactory;
+            _transactionConverter = _settings.TransactionConverter;
             _streamStoreNotifier = new Lazy<IStreamStoreNotifier>(() =>
             {
                 if(_settings.CreateStreamStoreNotifier == null)
@@ -87,7 +89,7 @@
                         await command.ExecuteNonQueryAsync(cancellationToken).NotOnCapturedContext();
                     }
 
-                    using(var command = BuildCommand(_schema.Definition, transaction))
+                    using (var command = BuildCommand(_schema.Definition, transaction))
                     {
                         await command.ExecuteNonQueryAsync(cancellationToken).NotOnCapturedContext();
                     }
@@ -134,7 +136,7 @@
                 using(var transaction = _createTransaction(connection))
                 using(var command = BuildFunctionCommand(_schema.ReadSchemaVersion, transaction))
                 {
-                    var result = (int) await command.ExecuteScalarAsync(cancellationToken).NotOnCapturedContext();
+                    var result = (int)await command.ExecuteScalarAsync(cancellationToken).NotOnCapturedContext();
 
                     return new CheckSchemaResult(result, CurrentVersion);
                 }
@@ -167,15 +169,13 @@
                 }
             };
 
-        private static NpgsqlCommand BuildFunctionCommand(
+        private NpgsqlCommand BuildFunctionCommand(
             string function,
-            NpgsqlTransaction transaction,
+            IDbTransaction transaction,
             params NpgsqlParameter[] parameters)
         {
-            var command = new NpgsqlCommand(function, transaction.Connection, transaction)
-            {
-                CommandType = CommandType.StoredProcedure,
-            };
+            var command = BuildCommand(function, transaction);
+            command.CommandType = CommandType.StoredProcedure;
 
             foreach(var parameter in parameters)
             {
@@ -185,9 +185,17 @@
             return command;
         }
 
-        private static NpgsqlCommand BuildCommand(
+        private NpgsqlCommand BuildCommand(
             string commandText,
-            NpgsqlTransaction transaction) => new NpgsqlCommand(commandText, transaction.Connection, transaction);
+            IDbTransaction transaction)
+        {
+            var npgsqlTransaction = _transactionConverter(transaction);
+            if(npgsqlTransaction is null)
+            {
+                throw new InvalidOperationException("Error converting IDbTransaction to NpgsqlTransaction");
+            }
+            return new NpgsqlCommand(commandText, npgsqlTransaction.Connection, npgsqlTransaction);
+        }
 
         internal async Task<int> TryScavenge(
             StreamIdInfo streamIdInfo,

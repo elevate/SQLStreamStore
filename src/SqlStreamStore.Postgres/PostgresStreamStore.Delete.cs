@@ -1,6 +1,7 @@
 ﻿namespace SqlStreamStore
 {
     using System;
+    using System.Data;
     using System.Threading;
     using System.Threading.Tasks;
     using Npgsql;
@@ -39,7 +40,7 @@
         private async Task DeleteStreamInternal(
             PostgresqlStreamId streamId,
             int expectedVersion,
-            NpgsqlTransaction transaction,
+            IDbTransaction transaction,
             CancellationToken cancellationToken)
         {
             using(var command = BuildFunctionCommand(
@@ -89,7 +90,7 @@
         private async Task DeleteEventsInternal(
             StreamIdInfo streamIdInfo,
             Guid[] eventIds,
-            NpgsqlTransaction transaction,
+            IDbTransaction transaction,
             CancellationToken cancellationToken)
         {
             using(var command = BuildFunctionCommand(

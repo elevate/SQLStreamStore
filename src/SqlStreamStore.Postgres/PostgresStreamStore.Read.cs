@@ -22,7 +22,7 @@
             ReadDirection direction,
             bool prefetch,
             ReadNextStreamPage readNext,
-            NpgsqlTransaction transaction,
+            IDbTransaction transaction,
             CancellationToken cancellationToken)
         {
             // If the count is int.MaxValue, TSql will see it as a negative number. 
@@ -81,7 +81,7 @@
                 }
             }
 
-            using(var command = new NpgsqlCommand(refcursorSql.ToString(), transaction.Connection, transaction))
+            using(var command = BuildCommand(refcursorSql.ToString(), transaction))
             using(var reader = await command
                 .ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken)
                 .NotOnCapturedContext())
