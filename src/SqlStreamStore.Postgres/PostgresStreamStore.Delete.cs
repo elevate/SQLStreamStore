@@ -18,7 +18,7 @@
             var streamIdInfo = new StreamIdInfo(streamId);
 
             using(var connection = await OpenConnection(cancellationToken))
-            using(var transaction = connection.BeginTransaction())
+            using(var transaction = _createTransaction(connection))
             {
                 await DeleteStreamInternal(
                     streamIdInfo.PostgresqlStreamId,
@@ -78,7 +78,7 @@
             var streamIdInfo = new StreamIdInfo(streamId);
 
             using(var connection = await OpenConnection(cancellationToken))
-            using(var transaction = connection.BeginTransaction())
+            using(var transaction = _createTransaction(connection))
             {
                 await DeleteEventsInternal(streamIdInfo, new[] { eventId }, transaction, cancellationToken);
 

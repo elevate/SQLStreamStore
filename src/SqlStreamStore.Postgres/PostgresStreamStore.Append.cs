@@ -29,7 +29,7 @@
                     var streamIdInfo = new StreamIdInfo(streamId);
 
                     using(var connection = await OpenConnection(cancellationToken))
-                    using(var transaction = connection.BeginTransaction())
+                    using(var transaction = _createTransaction(connection))
                     using(var command = BuildFunctionCommand(
                         _schema.AppendToStream,
                         transaction,

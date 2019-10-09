@@ -18,6 +18,7 @@
     {
         private readonly PostgresStreamStoreSettings _settings;
         private readonly Func<NpgsqlConnection> _createConnection;
+        private readonly Func<NpgsqlConnection, NpgsqlTransaction> _createTransaction;
         private readonly Schema _schema;
         private readonly Lazy<IStreamStoreNotifier> _streamStoreNotifier;
 
@@ -32,6 +33,7 @@
         {
             _settings = settings;
             _createConnection = () => _settings.ConnectionFactory(_settings.ConnectionString);
+            _createTransaction = _settings.TransactionFactory;
             _streamStoreNotifier = new Lazy<IStreamStoreNotifier>(() =>
             {
                 if(_settings.CreateStreamStoreNotifier == null)
@@ -78,7 +80,7 @@
             using(var connection = _createConnection())
             {
                 await connection.OpenAsync(cancellationToken).NotOnCapturedContext();
-                using(var transaction = connection.BeginTransaction())
+                using(var transaction = _createTransaction(connection))
                 {
                     using(var command = BuildCommand($"CREATE SCHEMA IF NOT EXISTS {_settings.Schema}", transaction))
                     {
@@ -107,7 +109,7 @@
             using(var connection = _createConnection())
             {
                 await connection.OpenAsync(cancellationToken).NotOnCapturedContext();
-                using(var transaction = connection.BeginTransaction())
+                using(var transaction = _createTransaction(connection))
                 using(var command = BuildCommand(_schema.DropAll, transaction))
                 {
                     await command
@@ -129,7 +131,7 @@
             using(var connection = _createConnection())
             {
                 await connection.OpenAsync(cancellationToken).NotOnCapturedContext();
-                using(var transaction = connection.BeginTransaction())
+                using(var transaction = _createTransaction(connection))
                 using(var command = BuildFunctionCommand(_schema.ReadSchemaVersion, transaction))
                 {
                     var result = (int) await command.ExecuteScalarAsync(cancellationToken).NotOnCapturedContext();
@@ -143,7 +145,7 @@
             => async cancellationToken =>
             {
                 using(var connection = await OpenConnection(cancellationToken))
-                using(var transaction = connection.BeginTransaction())
+                using(var transaction = _createTransaction(connection))
                 using(var command = BuildFunctionCommand(
                     _schema.ReadJsonData,
                     transaction,
@@ -199,7 +201,7 @@
             try
             {
                 using(var connection = await OpenConnection(cancellationToken))
-                using(var transaction = connection.BeginTransaction())
+                using(var transaction = _createTransaction(connection))
                 {
                     var deletedMessageIds = new List<Guid>();
                     using(var command = BuildFunctionCommand(

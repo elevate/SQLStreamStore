@@ -10,6 +10,7 @@
     {
         private string _schema = "public";
         private Func<string, NpgsqlConnection> _connectionFactory;
+        private Func<NpgsqlConnection, NpgsqlTransaction> _transactionFactory;
         private GetUtcNow _getUtcNow = SystemClock.GetUtcNow;
 
         /// <summary>
@@ -87,6 +88,17 @@
             {
                 Ensure.That(value, nameof(value)).IsNotNull();
                 _connectionFactory = value;
+            }
+        }
+
+        public Func<NpgsqlConnection, NpgsqlTransaction> TransactionFactory
+        {
+            get => _transactionFactory
+                   ?? (_transactionFactory = connection => connection.BeginTransaction());
+            set
+            {
+                Ensure.That(value, nameof(value)).IsNotNull();
+                _transactionFactory = value;
             }
         }
 
